@@ -19,6 +19,8 @@ import { AppUserRecord } from './types';
 export default function App() {
   const [roomId, setRoomId] = useState<string | null>(null);
   const [isJoined, setIsJoined] = useState(false);
+  const [guestName, setGuestName] = useState<string>('Guest Participant');
+  const [joinPasscode, setJoinPasscode] = useState<string>('');
   
   // Custom states matching user specs
   const [session, setSession] = useState<ActiveSession | null>(null);
@@ -88,6 +90,12 @@ export default function App() {
     if (!enteredName.trim()) return;
 
     // Join room setup
+    setGuestName(enteredName);
+    if (passcode) {
+      setJoinPasscode(passcode);
+    } else {
+      setJoinPasscode('');
+    }
     setRoomId(targetRoomId);
     setJoinError(undefined);
     setIsJoined(true);
@@ -235,14 +243,6 @@ export default function App() {
                   <Laptop className="w-3.5 h-3.5 text-blue-400" />
                   <span className="hidden sm:inline">Desktop Client</span>
                 </button>
-                
-                <button
-                  onClick={() => setShowDeployModal(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1C1C1E] hover:bg-[#2a2a2e] text-xs font-semibold border border-white/5 text-white transition-all cursor-pointer"
-                >
-                  <ExternalLink className="w-3.5 h-3.5 text-green-400" />
-                  <span>Publish</span>
-                </button>
               </div>
             </div>
 
@@ -375,142 +375,142 @@ export default function App() {
 
                   {/* Micro bottom status */}
                   <div className="border-t border-white/5 pt-4 text-[10px] text-[#4A4A4F] flex items-center justify-between">
-                    <span>Web Socket Gateway: Connected IP</span>
-                    <span className="font-mono">{session ? session.email : 'guest-participant'}</span>
+                    <span>Total Client Downloads</span>
+                    <span className="font-mono font-bold text-blue-400">{downloadsRegistry.length + 154} files</span>
                   </div>
                 </motion.div>
               </div>
             </div>
 
             {/* Enterprise Directory & downloads metrics console requested by the user */}
-            <div className="w-full max-w-6xl mx-auto mt-6 mb-12 p-6 bg-[#161618] rounded-2xl border border-[#232326] space-y-6">
-              
-              {/* Header metrics toggles */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
-                <div className="space-y-1">
-                  <h3 className="text-base font-bold text-white flex items-center gap-2">
-                    <Database className="w-4 h-4 text-emerald-400" />
-                    SFK Directory & Downloads Logs
-                  </h3>
-                  <p className="text-xs text-[#8E8E93]">Real-time audit track of users signed up and app download statistics.</p>
+            {session?.email === 'sfkshahfahadkhan@gmail.com' && (
+              <div className="w-full max-w-6xl mx-auto mt-6 mb-12 p-6 bg-[#161618] rounded-2xl border border-[#232326] space-y-6">
+                
+                {/* Header metrics toggles */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
+                  <div className="space-y-1">
+                    <h3 className="text-base font-bold text-white flex items-center gap-2">
+                      <Database className="w-4 h-4 text-emerald-400" />
+                      SFK Directory & Downloads Logs
+                    </h3>
+                    <p className="text-xs text-[#8E8E93]">Real-time audit track of users signed up and app download statistics.</p>
+                  </div>
+
+                  {/* Dashboard Tab Selector */}
+                  <div className="flex bg-[#0F0F10] p-1 border border-[#2A2A2E] rounded-lg">
+                    <button
+                      onClick={() => setActiveTab('directory')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase rounded-md transition-all cursor-pointer ${activeTab === 'directory' ? 'bg-[#252529] text-white shadow' : 'text-[#8E8E93] hover:text-white'}`}
+                    >
+                      <Users2 className="w-3.5 h-3.5" />
+                      Student Directory ({usersRegistry.length})
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('downloads')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase rounded-md transition-all cursor-pointer ${activeTab === 'downloads' ? 'bg-[#252529] text-white shadow' : 'text-[#8E8E93] hover:text-white'}`}
+                    >
+                      <Activity className="w-3.5 h-3.5" />
+                      Download Metrics ({downloadsRegistry.length})
+                    </button>
+                  </div>
                 </div>
 
-                {/* Dashboard Tab Selector */}
-                <div className="flex bg-[#0F0F10] p-1 border border-[#2A2A2E] rounded-lg">
-                  <button
-                    onClick={() => setActiveTab('directory')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase rounded-md transition-all cursor-pointer ${activeTab === 'directory' ? 'bg-[#252529] text-white shadow' : 'text-[#8E8E93] hover:text-white'}`}
-                  >
-                    <Users2 className="w-3.5 h-3.5" />
-                    Student Directory ({usersRegistry.length})
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('downloads')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase rounded-md transition-all cursor-pointer ${activeTab === 'downloads' ? 'bg-[#252529] text-white shadow' : 'text-[#8E8E93] hover:text-white'}`}
-                  >
-                    <Activity className="w-3.5 h-3.5" />
-                    Download Metrics ({downloadsRegistry.length})
-                  </button>
-                </div>
-              </div>
-
-              {/* Render Selected admin console tab */}
-              {activeTab === 'directory' && (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs text-[#8E8E93]">
-                    <thead>
-                      <tr className="border-b border-white/5 uppercase tracking-wider text-[10px] text-white/50 bg-[#1C1C1E]/50">
-                        <th className="py-3 px-4 rounded-l-lg">Student Profile</th>
-                        <th className="py-3 px-4">Contact Email</th>
-                        <th className="py-3 px-4">Registry Method</th>
-                        <th className="py-3 px-4">Registration Date</th>
-                        <th className="py-3 px-4 rounded-r-lg text-right">Activity Rank</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {usersRegistry.map((item) => (
-                        <tr key={item.id} className="hover:bg-white/5 transition-colors group">
-                          <td className="py-3 px-4 text-white font-medium flex items-center gap-2.5">
-                            {item.avatarUrl ? (
-                              <img src={item.avatarUrl} className="w-7 h-7 rounded-full object-cover border border-white/10" alt="Avatar" />
-                            ) : (
-                              <div className="w-7 h-7 rounded-full bg-[#252529] border border-white/10 flex items-center justify-center font-bold text-xs text-blue-400">
-                                {item.name[0]}
-                              </div>
-                            )}
-                            <span className="group-hover:text-blue-400 transition-colors">{item.name}</span>
-                          </td>
-                          <td className="py-3 px-4 font-mono">{item.email}</td>
-                          <td className="py-3 px-4">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${item.loginMethod === 'Google' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/10' : 'bg-[#252529] border border-white/5'}`}>
-                              {item.loginMethod === 'Google' ? '● Google Google OAuth' : item.loginMethod}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4">
-                            {new Date(item.signUpDate).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <span className="font-mono text-emerald-400 font-bold">{item.totalMeetingsJoined} classes</span>
-                          </td>
+                {/* Render Selected admin console tab */}
+                {activeTab === 'directory' && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs text-[#8E8E93]">
+                      <thead>
+                        <tr className="border-b border-white/5 uppercase tracking-wider text-[10px] text-white/50 bg-[#1C1C1E]/50">
+                          <th className="py-3 px-4 rounded-l-lg">Student Profile</th>
+                          <th className="py-3 px-4">Registry Method</th>
+                          <th className="py-3 px-4">Registration Date</th>
+                          <th className="py-3 px-4 rounded-r-lg text-right">Activity Rank</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {activeTab === 'downloads' && (
-                <div className="grid md:grid-cols-12 gap-6 items-start">
-                  
-                  {/* Custom crafted SVG graph for safe React building */}
-                  <div className="md:col-span-7 bg-[#0F0F10] border border-[#232326] p-4 rounded-xl space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs uppercase font-extrabold tracking-widest text-[#8E8E93] flex items-center gap-1.5">
-                        <TrendingUp className="w-3.5 h-3.5 text-blue-400" />
-                        Weekly Download Growth Chart
-                      </span>
-                      <span className="text-[10px] text-blue-400">Total Downloads: {downloadsRegistry.length + 154}</span>
-                    </div>
-
-                    <div className="w-full h-48 flex items-end justify-between px-2 pt-6 pb-2 border-b border-l border-white/10">
-                      {chartPoints.map((pt, idx) => {
-                        const heightPct = (pt.count / maxCount) * 100;
-                        return (
-                          <div key={idx} className="flex-1 flex flex-col items-center gap-2 group h-full justify-end relative">
-                            <span className="absolute -top-6 text-[10px] font-mono text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity bg-[#1C1C1E] px-1 py-0.5 rounded border border-white/5">
-                              {pt.count} dl
-                            </span>
-                            <div 
-                              className="w-8 bg-blue-600 group-hover:bg-blue-500 rounded-t-sm transition-all shadow-md shadow-blue-500/15" 
-                              style={{ height: `${heightPct}%` }}
-                            ></div>
-                            <span className="text-[9px] font-mono text-[#4A4A4F] group-hover:text-white transition-colors">{pt.day}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {usersRegistry.map((item) => (
+                          <tr key={item.id} className="hover:bg-white/5 transition-colors group">
+                            <td className="py-3 px-4 text-white font-medium flex items-center gap-2.5">
+                              {item.avatarUrl ? (
+                                <img src={item.avatarUrl} className="w-7 h-7 rounded-full object-cover border border-white/10" alt="Avatar" />
+                              ) : (
+                                <div className="w-7 h-7 rounded-full bg-[#252529] border border-white/10 flex items-center justify-center font-bold text-xs text-blue-400">
+                                  {item.name[0]}
+                                </div>
+                              )}
+                              <span className="group-hover:text-blue-400 transition-colors">{item.name}</span>
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${item.loginMethod === 'Google' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/10' : 'bg-[#252529] border border-white/5'}`}>
+                                {item.loginMethod === 'Google' ? '● Google Google OAuth' : item.loginMethod}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4">
+                              {new Date(item.signUpDate).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <span className="font-mono text-emerald-400 font-bold">{item.totalMeetingsJoined} classes</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
+                )}
 
-                  {/* Downloads event logs */}
-                  <div className="md:col-span-5 bg-[#0F0F10] border border-[#232326] p-4 rounded-xl space-y-3 max-h-[250px] overflow-y-auto">
-                    <span className="text-xs uppercase font-extrabold tracking-widest text-emerald-400">Live Client Fetch Log</span>
-                    <div className="space-y-2">
-                      {downloadsRegistry.map((item) => (
-                        <div key={item.id} className="flex items-center justify-between p-2 rounded bg-white/5 border border-white/5 text-[10px]">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                            <span className="font-semibold text-white">{item.platform} Installer</span>
-                            <span className="text-[#8E8E93]">{item.version}</span>
-                          </div>
-                          <span className="font-mono text-[#4A4A4F]">{item.ipPlaceholder}</span>
-                        </div>
-                      ))}
+                {activeTab === 'downloads' && (
+                  <div className="grid md:grid-cols-12 gap-6 items-start">
+                    
+                    {/* Custom crafted SVG graph for safe React building */}
+                    <div className="md:col-span-7 bg-[#0F0F10] border border-[#232326] p-4 rounded-xl space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs uppercase font-extrabold tracking-widest text-[#8E8E93] flex items-center gap-1.5">
+                          <TrendingUp className="w-3.5 h-3.5 text-blue-400" />
+                          Weekly Download Growth Chart
+                        </span>
+                        <span className="text-[10px] text-blue-400">Total Downloads: {downloadsRegistry.length + 154}</span>
+                      </div>
+
+                      <div className="w-full h-48 flex items-end justify-between px-2 pt-6 pb-2 border-b border-l border-white/10">
+                        {chartPoints.map((pt, idx) => {
+                          const heightPct = (pt.count / maxCount) * 100;
+                          return (
+                            <div key={idx} className="flex-1 flex flex-col items-center gap-2 group h-full justify-end relative">
+                              <span className="absolute -top-6 text-[10px] font-mono text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity bg-[#1C1C1E] px-1 py-0.5 rounded border border-white/5">
+                                {pt.count} dl
+                              </span>
+                              <div 
+                                className="w-8 bg-blue-600 group-hover:bg-blue-500 rounded-t-sm transition-all shadow-md shadow-blue-500/15" 
+                                style={{ height: `${heightPct}%` }}
+                              ></div>
+                              <span className="text-[9px] font-mono text-[#4A4A4F] group-hover:text-white transition-colors">{pt.day}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
 
-                </div>
-              )}
-            </div>
+                    {/* Downloads event logs */}
+                    <div className="md:col-span-5 bg-[#0F0F10] border border-[#232326] p-4 rounded-xl space-y-3 max-h-[250px] overflow-y-auto">
+                      <span className="text-xs uppercase font-extrabold tracking-widest text-emerald-400">Live Client Fetch Log</span>
+                      <div className="space-y-2">
+                        {downloadsRegistry.map((item) => (
+                          <div key={item.id} className="flex items-center justify-between p-2 rounded bg-white/5 border border-white/5 text-[10px]">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                              <span className="font-semibold text-white">{item.platform} Installer</span>
+                              <span className="text-[#8E8E93]">{item.version}</span>
+                            </div>
+                            <span className="font-mono text-[#4A4A4F]">{item.ipPlaceholder}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* General footer layout */}
             <div className="w-full max-w-6xl mx-auto py-4 border-t border-white/5 text-center text-[10px] text-[#4A4A4F] flex flex-col sm:flex-row items-center justify-between gap-1">
@@ -737,7 +737,8 @@ export default function App() {
           <MeetingRoom 
             key="room"
             roomId={roomId || ''} 
-            userName={session?.name || 'Guest Participant'} 
+            userName={session?.name || guestName} 
+            passcode={joinPasscode}
             onLeave={handleLeave} 
           />
         )}

@@ -14,10 +14,11 @@ interface MeetingRoomProps {
   roomId: string;
   userName: string;
   onLeave: () => void;
+  passcode?: string;
   key?: string;
 }
 
-export default function MeetingRoom({ roomId, userName, onLeave }: MeetingRoomProps) {
+export default function MeetingRoom({ roomId, userName, onLeave, passcode: initialPasscode }: MeetingRoomProps) {
   const [peers, setPeers] = useState<{ [key: string]: User }>({});
   const [myStream, setMyStream] = useState<MediaStream | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -40,7 +41,7 @@ export default function MeetingRoom({ roomId, userName, onLeave }: MeetingRoomPr
   // Advanced features state
   const [isHost, setIsHost] = useState(false);
   const [hostName, setHostName] = useState('Academy Coordinator');
-  const [passcode, setPasscode] = useState('SFK-4008');
+  const [passcode, setPasscode] = useState(initialPasscode || 'SFK-4008');
   const [waitingRoomActive, setWaitingRoomActive] = useState(false);
   const [showInfoDropdown, setShowInfoDropdown] = useState(false);
   const [isWaiting, setIsWaiting] = useState(false); // Guest waiting indicator
@@ -61,6 +62,7 @@ export default function MeetingRoom({ roomId, userName, onLeave }: MeetingRoomPr
   const recordedChunksRef = useRef<Blob[]>([]);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analysersRef = useRef<{ [key: string]: AnalyserNode }>({});
+  const mediaInitialized = useRef(false);
 
   useEffect(() => {
     // 1. Session clock timer
@@ -89,8 +91,19 @@ export default function MeetingRoom({ roomId, userName, onLeave }: MeetingRoomPr
     const socket = io();
     socketRef.current = socket;
 
-    // Direct event listener triggers
-    socket.emit('join-room', roomId, 'peer-' + Math.random().toString(36).substring(2, 9), userName);
+    // Create unique PeerJS instance on mount
+    const peer = new Peer();
+    peerRef.current = peer;
+
+    peer.on('open', (id) => {
+      console.log("Acquired Genuine PeerID:", id);
+      // Emit join-room with the REAL Peer Id matching the peer list registry!
+      socket.emit('join-room', roomId, id, userName, initialPasscode || passcode);
+    });
+
+    peer.on('error', (err) => {
+      console.error("PeerJS error:", err);
+    });
 
     socket.on('entered-waiting-room', (info: { roomId: string; passcode: string }) => {
       setIsWaiting(true);
@@ -115,6 +128,9 @@ export default function MeetingRoom({ roomId, userName, onLeave }: MeetingRoomPr
       }
       setPasscode(info.passcode);
       setWaitingRoomActive(info.waitingRoomEnabled);
+
+      // Successfully inside room, request and initialize media layout automatically!
+      initializePeerAndMedia();
     });
 
     socket.on('waiting-list-updated', (list: any[]) => {
@@ -126,25 +142,26 @@ export default function MeetingRoom({ roomId, userName, onLeave }: MeetingRoomPr
       if (info.hostId === socket.id) setIsHost(true);
     });
 
-    // If direct entrance is valid, start media immediately
+    // If direct entrance is valid, start media immediately once connected (fallback if room-info doesn't fire it)
     socket.on('connect', () => {
-      // In cases where direct connection is active (no waiting room)
       setTimeout(() => {
         if (!isWaiting) {
           initializePeerAndMedia();
         }
-      }, 500);
+      }, 800);
     });
 
     return () => {
       socket.disconnect();
       peerRef.current?.destroy();
-      myStream?.getTracks().forEach(track => track.stop());
       audioContextRef.current?.close();
     };
   }, []);
 
   const initializePeerAndMedia = async () => {
+    if (mediaInitialized.current) return;
+    mediaInitialized.current = true;
+
     try {
       const constraints: MediaStreamConstraints = {
         video: selectedVideoId ? { deviceId: { exact: selectedVideoId } } : true,
@@ -155,14 +172,12 @@ export default function MeetingRoom({ roomId, userName, onLeave }: MeetingRoomPr
       setMyStream(stream);
       if (myVideoRef.current) myVideoRef.current.srcObject = stream;
 
-      const peer = new Peer();
-      peerRef.current = peer;
+      const peer = peerRef.current;
+      if (!peer) return;
 
-      peer.on('open', (id) => {
-        console.log("Acquired PeerID:", id);
-        
-        socketRef.current?.on('user-connected', (userId, remoteName) => {
-          console.log('Class participant connected:', userId, remoteName);
+      socketRef.current?.on('user-connected', (userId, remoteName) => {
+        console.log('Class participant connected:', userId, remoteName);
+        if (stream) {
           const call = peer.call(userId, stream, { metadata: { name: userName } });
           call.on('stream', (remoteStream) => {
             setPeers(prev => ({
@@ -171,70 +186,69 @@ export default function MeetingRoom({ roomId, userName, onLeave }: MeetingRoomPr
             }));
             setupAudioAnalysis(userId, remoteStream);
           });
-        });
+        }
+      });
 
-        // Answer incoming signals
-        peer.on('call', (call) => {
-          call.answer(stream);
-          const remoteName = call.metadata?.name || 'Participant';
-          call.on('stream', (remoteStream) => {
-            setPeers(prev => ({
-              ...prev,
-              [call.peer]: { id: call.peer, stream: remoteStream, name: remoteName, isMuted: false, isVideoOff: false }
-            }));
-            setupAudioAnalysis(call.peer, remoteStream);
-          });
+      // Answer incoming signals
+      peer.on('call', (call) => {
+        call.answer(stream);
+        const remoteName = call.metadata?.name || 'Participant';
+        call.on('stream', (remoteStream) => {
+          setPeers(prev => ({
+            ...prev,
+            [call.peer]: { id: call.peer, stream: remoteStream, name: remoteName, isMuted: false, isVideoOff: false }
+          }));
+          setupAudioAnalysis(call.peer, remoteStream);
         });
+      });
 
-        // Other core sockets triggers
-        socketRef.current?.on('user-disconnected', (userId) => {
-          setPeers(prev => {
-            const nextPeers = { ...prev };
-            delete nextPeers[userId];
-            return nextPeers;
-          });
-          delete analysersRef.current[userId];
+      // Other core sockets triggers
+      socketRef.current?.on('user-disconnected', (userId) => {
+        setPeers(prev => {
+          const nextPeers = { ...prev };
+          delete nextPeers[userId];
+          return nextPeers;
         });
+        delete analysersRef.current[userId];
+      });
 
-        socketRef.current?.on('receive-message', (msg: Message) => {
-          setMessages(prev => [...prev, msg]);
-        });
+      socketRef.current?.on('receive-message', (msg: Message) => {
+        setMessages(prev => [...prev, msg]);
+      });
 
-        socketRef.current?.on('status-updated', (userId, status) => {
-          setPeers(prev => {
-            if (!prev[userId]) return prev;
-            return {
-              ...prev,
-              [userId]: { ...prev[userId], ...status }
-            };
-          });
+      socketRef.current?.on('status-updated', (userId, status) => {
+        setPeers(prev => {
+          if (!prev[userId]) return prev;
+          return {
+            ...prev,
+            [userId]: { ...prev[userId], ...status }
+          };
         });
+      });
 
-        socketRef.current?.on('receive-reaction', (data) => {
-          const id = Math.random().toString(36).substring(2, 9);
-          setReactions(prev => [...prev, { id, ...data }]);
-          setTimeout(() => {
-            setReactions(prev => prev.filter(r => r.id !== id));
-          }, 3000);
-        });
+      socketRef.current?.on('receive-reaction', (data) => {
+        const id = Math.random().toString(36).substring(2, 9);
+        setReactions(prev => [...prev, { id, ...data }]);
+        setTimeout(() => {
+          setReactions(prev => prev.filter(r => r.id !== id));
+        }, 3000);
+      });
 
-        socketRef.current?.on('receive-host-action', ({ action, targetId }) => {
-          if (action === 'mute-all' && socketRef.current?.id !== targetId) {
-            setIsMuted(true);
-            stream.getAudioTracks().forEach(t => t.enabled = false);
-          } else if (action === 'stop-video-all' && socketRef.current?.id !== targetId) {
-            setIsVideoOff(true);
-            stream.getVideoTracks().forEach(t => t.enabled = false);
-          }
-        });
+      socketRef.current?.on('receive-host-action', ({ action, targetId }) => {
+        if (action === 'mute-all' && socketRef.current?.id !== targetId) {
+          setIsMuted(true);
+          stream.getAudioTracks().forEach(t => t.enabled = false);
+        } else if (action === 'stop-video-all' && socketRef.current?.id !== targetId) {
+          setIsVideoOff(true);
+          stream.getVideoTracks().forEach(t => t.enabled = false);
+        }
       });
 
       setupAudioAnalysis('me', stream);
 
     } catch (err) {
       console.warn("Media stream init fallback:", err);
-      // Fallback to purely audio or direct empty track
-      alert("Microphone/Camera permission needed. Please ensure your microphone sources are accessible.");
+      alert("Microphone/Camera permission needed. Please ensure your microphone and camera permissions are allowed.");
     }
   };
 

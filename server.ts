@@ -69,7 +69,7 @@ async function startServer() {
       const isHost = room.hostId === socket.id;
 
       // Check passcode if not host
-      if (!isHost && room.passcode && passcode && room.passcode !== passcode) {
+      if (!isHost && room.passcode && room.passcode !== passcode) {
         socket.emit("join-error", "Incorrect passcode.");
         return;
       }
