@@ -1,0 +1,12 @@
+{
+  "name": "SFK Academy Meetings",
+  "description": "A professional video conferencing application with screen sharing, real-time chat, and meeting recording capabilities.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "display-capture"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
